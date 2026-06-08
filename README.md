@@ -116,13 +116,6 @@ Each `stop_counting` is triggered remotely by the hub once it has accumulated 20
 detection all work. You can also kill the slave and restart it: the host re-discovers it (DDS
 re-discovery) and re-subscribes automatically, no host restart needed.
 
-### Manual cross-device call (optional)
-
-The hub action `hub_node.call_peer(target_device, function_name, function_args)`:
-- `function_args` is a **JSON string** from the UI; the action `json.loads` it into a dict before
-  passing it to `call_device_action`.
-- e.g. call the sub's generic echo: `function_name="echo"`, `function_args={"message": "hello"}`.
-
 ### Stopping
 
 Stop each process with `Ctrl+C` (or kill the two PIDs).

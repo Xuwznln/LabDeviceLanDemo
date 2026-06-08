@@ -166,49 +166,9 @@ class HubNodeDemo:
     @not_action
     def _terminate_sub(self, value: int) -> None:
         """在独立线程里通过 ros action 终止子设备当前轮（避免阻塞订阅回调线程）。"""
-        ros_node = getattr(self, "_ros_node", None)
-        if ros_node is None or not hasattr(ros_node, "call_device_action"):
-            self.logger.error("当前 _ros_node 不支持 call_device_action，无法终止子设备")
-            return
         try:
-            reply = ros_node.call_device_action(self._sub_device, "stop_counting", {}, server_wait_timeout=5.0)
+            reply = self._ros_node.call_device_action(self._sub_device, "stop_counting", {}, server_wait_timeout=5.0)
             self.logger.info(f"[HUB][{self.node_label}] 已通过 ros action 终止子设备: {reply}")
         except Exception as ex:  # noqa: BLE001 - 演示用，打印任何远端错误
             self._last_action = f"终止失败: {ex}"
             self.logger.warning(f"[HUB][{self.node_label}] 终止子设备失败: {ex}")
-
-    # ============ 手动跨设备调用（可选）============
-
-    @action(description="跨设备调用：调用目标设备上的动作并返回结果", feedback_interval=1.0)
-    def call_peer(
-        self,
-        target_device: DeviceSlot,
-        function_name: str = "echo",
-        function_args: str = '{"message": "hello from hub"}',
-    ) -> dict:
-        """通过 _ros_node 便捷函数跨设备调用任意设备的动作。
-
-        Args:
-            target_device[目标设备]: 要调用的对端设备 ID。
-            function_name[函数名]: 对端设备上的动作名，例如 echo / stop_counting。
-            function_args[入参JSON]: 入参，JSON 字符串。
-        """
-        try:
-            call_kwargs = json.loads(function_args) if function_args else {}
-        except json.JSONDecodeError as ex:
-            raise ValueError(f"function_args 不是合法 JSON: {ex}")
-
-        ros_node = getattr(self, "_ros_node", None)
-        if ros_node is None or not hasattr(ros_node, "call_device_action"):
-            raise RuntimeError("当前 _ros_node 不支持 call_device_action，请升级 unilabos。")
-
-        target = str(target_device)
-        return_value = ros_node.call_device_action(target, function_name, call_kwargs)
-        self._last_action = f"call_peer {target}.{function_name}"
-        self.logger.info(f"[HUB][{self.node_label}] call_peer {target}.{function_name} -> {return_value}")
-        return {
-            "success": True,
-            "target_device": target,
-            "function_name": function_name,
-            "return_value": return_value,
-        }

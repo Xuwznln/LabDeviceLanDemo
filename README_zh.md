@@ -107,12 +107,6 @@ python -m unilabos.app.main \
 ros action 远程调用、轮次重置识别均工作正常。还可单独停掉 slave 再重启：host 会自动重新发现
 （DDS re-discovery）并重新订阅，无需重启 host。
 
-### 手动跨设备调用（可选）
-
-中枢动作 `hub_node.call_peer(target_device, function_name, function_args)`：
-- `function_args` 是 UI 传来的 **JSON 字符串**，动作内部 `json.loads` 成 dict 后传给 `call_device_action`；
-- 例如调用子设备的通用回显：`function_name="echo"`、`function_args={"message": "hello"}`。
-
 ### 停止
 
 对每个进程按 `Ctrl+C`（或 kill 两个 PID）。
