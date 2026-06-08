@@ -1,0 +1,29 @@
+{
+    "nodes": [
+        {
+            "id": "sub_reporter",
+            "name": "LAN演示-子设备状态上报(Slave)",
+            "children": [],
+            "parent": null,
+            "type": "device",
+            "class": "status_reporter_demo",
+            "position": {
+                "x": 600,
+                "y": 200,
+                "z": 0
+            },
+            "config": {
+                "node_label": "sub",
+                "count_rate": 4.0,
+                "cycle_pause": 5.0,
+                "auto_start": true
+            },
+            "data": {
+                "heartbeat": 0,
+                "counter": 0,
+                "state": "running"
+            }
+        }
+    ],
+    "links": []
+}

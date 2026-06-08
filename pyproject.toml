@@ -3,20 +3,16 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "device_package_example"
+name = "lan_demo"
 version = "0.1.0"
-description = "Uni-Lab-OS external device package example"
+description = "Uni-Lab-OS LAN 演示设备包：跨设备 @subscribe + call_device_action 闭环 (host/slave)"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
-dependencies = [
-    "rich",
-]
+license = { text = "MIT" }
+dependencies = []
 
 [project.optional-dependencies]
-dev = [
-    "unilabos",
-]
+dev = ["unilabos"]
 
 [tool.setuptools.packages.find]
-include = ["device_package_example*"]
+include = ["lan_demo*"]

@@ -1,0 +1,29 @@
+{
+    "nodes": [
+        {
+            "id": "hub_node",
+            "name": "LAN演示-中枢节点(Host)",
+            "children": [],
+            "parent": null,
+            "type": "device",
+            "class": "hub_node_demo",
+            "position": {
+                "x": 200,
+                "y": 200,
+                "z": 0
+            },
+            "config": {
+                "node_label": "hub",
+                "sub_device": "sub_reporter",
+                "terminate_after": 20
+            },
+            "data": {
+                "heartbeat": 0,
+                "received_count": 0,
+                "terminations": 0,
+                "last_action": "（暂无）"
+            }
+        }
+    ],
+    "links": []
+}

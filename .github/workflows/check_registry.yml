@@ -9,27 +9,20 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v6
-
-      - name: Setup Miniforge (with mamba)
-        uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-version: latest
           use-mamba: true
           python-version: '3.11.14'
-          channels: conda-forge,robostack-staging,uni-lab,defaults
+          channels: conda-forge,robostack-staging,uni-lab
           channel-priority: flexible
           activate-environment: unilab
           auto-update-conda: false
-
       - name: Install unilabos
         shell: bash -el {0}
-        run: |
-          mamba install -n unilab uni-lab::unilabos -c uni-lab -c robostack-staging -c conda-forge -y
-
-      - name: Validate device registry
+        run: mamba install -n unilab --override-channels -c uni-lab -c robostack-staging -c conda-forge uni-lab::unilabos -y
+      - name: Validate
         shell: bash -el {0}
-        run: |
-          unilab --check_mode --devices ./device_package_example --external_devices_only
+        run: unilab --check_mode --devices ./lan_demo --external_devices_only

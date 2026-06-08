@@ -1,144 +1,167 @@
-# LabDeviceTemplate
+# device_package_lan_demo
 
-Uni-Lab-OS 外部设备包模板仓库。Fork 本仓库即可快速创建你自己的设备驱动包。
+**English** | [中文](README_zh.md)
 
-**创建时间**: 2026-03
+An external device package for Uni-Lab-OS that demonstrates a **LAN cross-device closed loop**: a
+central hub (host) and a sub device (slave) run as separate processes and demonstrate the full loop
+of cross-device `@subscribe` + remote control via `call_device_action` (ros action).
 
-## 功能
+## Devices
 
-- 提供标准的设备包目录结构
-- 包含一个示例计数设备 (`counting_device.py`)
-- 内置 GitHub Actions CI，自动验证注册表
+| Device class           | Class                | Role                                                                              |
+| ---------------------- | -------------------- | -------------------------------------------------------------------------------- |
+| `hub_node_demo`        | `HubNodeDemo`        | Hub: cross-device subscribes the sub's `counter`; after N hits terminates the sub via ros action |
+| `status_reporter_demo` | `StatusReporterDemo` | Sub: a self-growing `counter` published periodically; current round can be terminated remotely |
 
-## 快速开始
-
-### 1. Fork 本仓库
-
-点击右上角 **Fork** 按钮，创建你自己的仓库副本。
-
-### 2. 修改包名
-
-将 `device_package_example/` 目录重命名为你的设备包名称，例如 `my_lab_devices/`。
-
-同时更新 `pyproject.toml` 中的包名和描述：
-
-```toml
-[project]
-name = "my_lab_devices"
-description = "我的实验室设备包"
-```
-
-### 3. 编写设备代码
-
-参考 `device_package_example/counting_device.py` 示例，使用 `@device` 装饰器编写你的设备类：
-
-```python
-from unilabos.registry.decorators import device, action, topic_config
-
-@device(
-    id="my_device",
-    category=["custom"],
-    description="我的自定义设备",
-    display_name="自定义设备",
-)
-class MyDevice:
-    def __init__(self, device_id=None, config=None, **kwargs):
-        """
-        初始化设备。
-
-        Args:
-            device_id[设备ID]: 设备实例 ID。
-            config[设备配置]: 设备启动配置。
-        """
-        self.device_id = device_id or "my_device"
-        self.data = {}
-
-    @action(description="执行操作")
-    def do_something(self, param: str = "") -> dict:
-        """
-        执行示例操作。
-
-        Args:
-            param[操作参数]: 示例操作的字符串参数。
-        """
-        return {"success": True}
-
-    @property
-    @topic_config()
-    def status(self) -> str:
-        return self.data.get("status", "idle")
-```
-
-### 4. 本地开发与测试
+## Prerequisites
 
 ```bash
-# 创建 conda 环境并安装 unilabos（需要 ROS2 完整环境）
-mamba create -n unilab python=3.11.14 -c conda-forge -y
-mamba activate unilab
-mamba install uni-lab::unilabos -c uni-lab -c robostack-staging -c conda-forge -y
-
-# 验证注册表（check mode，会自动检测并安装 requirements.txt 中的依赖）
-unilab --check_mode --devices ./device_package_example --external_devices_only
-
-# 启动服务（带实验图）
-unilab --devices ./device_package_example --external_devices_only -g graph.json
+mamba activate unilab          # ROS 2 (humble) + unilabos environment
+cd <repo-root>                 # run all commands from the Uni-Lab-OS repo root
 ```
 
-> **依赖自动安装**: unilabos 在启动时会自动检测 `--devices` 目录下的 `requirements.txt`，缺失的包会通过 `uv`（优先）或 `pip` 自动安装。
+> **Credentials are mandatory.** `unilabos.app.main` exits immediately if `--ak` / `--sk` are not
+> provided (it needs a lab on the cloud). Reuse the AK/SK/addr from your IDE "test" run
+> configuration (or your own account at <https://leap-lab.bohrium.com>). `--upload_registry` is the
+> only optional cloud flag (it pushes the registry; drop it for a faster start). There is **no**
+> fully offline mode — `--ak/--sk/--addr` must always be present.
 
-### 5. CI 验证
+---
 
-Push 代码后，GitHub Actions 会自动运行 `--check_mode` 验证你的设备定义是否正确。
-
-## 目录结构
+## How it works
 
 ```
-├── README.md                     # 本文件
-├── requirements.txt              # Python 依赖
-├── pyproject.toml                # 包配置（支持 pip install -e .）
-├── .github/
-│   └── workflows/
-│       └── check_registry.yml    # CI 自动验证
-├── device_package_example/       # 设备包（重命名为你的包名）
-│   ├── __init__.py
-│   └── counting_device.py        # 示例设备
-└── .gitignore
+sub_reporter: counter self-grows (4/s) -> @topic_config publishes /devices/sub_reporter/counter
+        │  (1) cross-device @subscribe
+        ▼
+hub.on_sub_counter: accumulates the number of received messages
+        │  (2) if-check: from the first hit, once it reaches terminate_after (default 20)
+        ▼
+call_device_action(sub_reporter, "stop_counting")   (3) terminate the sub's current round via ros action
+        │
+        ▼
+sub counter resets to 0 (pause cycle_pause s) -> hub detects "round reset" -> starts the next round, repeat
 ```
 
-## 装饰器参考
+### Framework features showcased
 
-| 装饰器 | 用途 | 示例 |
-|---|---|---|
-| `@device(id=..., category=[...])` | 标记设备类 | `@device(id="my_pump", category=["pump_and_valve"])` |
-| `@action(...)` | 标记动作方法 | `@action(description="启动泵")` |
-| `@topic_config()` | 标记状态属性（配合 `@property`） | 见示例代码 |
-| `@not_action` | 排除公共方法（不作为动作） | `@not_action` |
-| `@always_free` | 标记为不受排队限制的动作 | `@always_free` |
+- **Cross-device `@subscribe`**: `@subscribe(device_id="sub_reporter", status_name="counter")`
+  subscribes to *another* device's status topic. `@subscribe` is cross-device only — to read
+  your own status just use a getter.
+- **Auto `msg_type` + retry until established**: no `msg_type` is given. The framework retries
+  type resolution on an interval (default 10s, **no attempt cap, until subscribed**), so the hub
+  picks up the type from the ROS graph as soon as the sub comes online — **independent of
+  host/slave start order**. `retry_interval` only customizes the interval.
+  > Note: when relying on auto-detection, do NOT annotate the callback's first parameter with a
+  > Python built-in type (e.g. `value: int`), or it will be mistaken for `msg_type`.
+- **Values go through msg convert**: the callback value is always converted by
+  `convert_from_ros_msg` — `std_msgs` basics become native values (`Int32 -> int`,
+  `String -> str`), composite messages become dicts.
+- **`trigger_when_change`**: `on_sub_state` subscribes the sub's `state`, which is published
+  continuously but only fires the callback on a real `running <-> paused` transition.
+- **`call_device_action` (cross-device call)**:
+  `self._ros_node.call_device_action(device, action, kwargs_dict)` takes a **dict** (the framework
+  serializes internally), auto-detects whether to use a native ros action or the serial command
+  channel, and returns a parsed dict/native value. Remote failures raise `DeviceActionError`.
 
-## 自动发现规则
+---
 
-- 带 `@action` 装饰器的方法 → 注册为**动作**
-- 不带 `@action` 的公共方法 → 自动注册为 `auto-{方法名}` 动作
-- `@property` + `@topic_config()` → 注册为**状态属性**
-- `_` 开头的方法/属性 → 不会被扫描
-- `@not_action` 标记的方法 → 不会被注册为动作
+## Launch tutorial (host first, then slave; two processes on one machine is fine)
 
-## 参数文档规范
+Both processes scan the same package (`--devices ./device_package_lan_demo/lan_demo`) and use
+`--external_devices_only`; only the graph file and `--is_slave` differ.
+**Always start the host first, then the slave** (the slave waits for the host service by default).
 
-在 `__init__` 和 action 方法 docstring 的 `Args:` 小节中，使用以下格式补充 schema 元数据：
+**Step 1 — start the host (hub):**
 
-```python
-"""
-Args:
-    param[显示名称]: 参数说明，会写入 JSON Schema 的 description。
-"""
+```bash
+python -m unilabos.app.main \
+  --devices ./device_package_lan_demo/lan_demo \
+  --external_devices_only \
+  --ak <YOUR_AK> --sk <YOUR_SK> --addr test --upload_registry \
+  --disable_browser --port 8101 \
+  -g ./device_package_lan_demo/examples/host.json
 ```
 
-- `param[显示名称]` 中的显示名称会写入 JSON Schema 字段的 `title`。
-- `:` 后面的说明会写入 JSON Schema 字段的 `description`。
-- 如果只写 `param: 参数说明`，`title` 会兜底为字段名，`description` 使用参数说明。
-- 如果没有写参数文档，生成器也会兜底补齐 `title=<字段名>` 和 `description=""`，但设备包示例应优先写清楚显示名和说明。
+**Step 2 — in another terminal, start the slave (sub):**
 
-## License
+```bash
+python -m unilabos.app.main \
+  --devices ./device_package_lan_demo/lan_demo \
+  --external_devices_only --is_slave \
+  --ak <YOUR_AK> --sk <YOUR_SK> --addr test --upload_registry \
+  --disable_browser --port 8102 \
+  -g ./device_package_lan_demo/examples/slave.json
+```
 
-MIT
+> PyCharm: duplicate the existing "test" run configuration (Module = `unilabos.app.main`, keep its
+> AK/SK/addr env), make host/slave copies, and set Parameters to the above.
+> For a real cross-machine LAN, put the two configs on two machines on the same LAN with a matching
+> `ROS_DOMAIN_ID`.
+
+### Expected output (verified)
+
+This tutorial has been run end-to-end; the slave log cycles like this:
+
+```
+[REPORT][sub] round 1 begins: counter grows from 0
+[REPORT][sub] stop_counting: round 1 terminated at 25, next round in 5.0s
+[REPORT][sub] round 2 begins: counter grows from 0
+[REPORT][sub] stop_counting: round 2 terminated at 19, next round in 5.0s
+... repeats indefinitely ...
+```
+
+Each `stop_counting` is triggered remotely by the hub once it has accumulated 20 received
+`counter` messages — proving cross-device subscribe, the ros-action remote call, and round-reset
+detection all work. You can also kill the slave and restart it: the host re-discovers it (DDS
+re-discovery) and re-subscribes automatically, no host restart needed.
+
+### Manual cross-device call (optional)
+
+The hub action `hub_node.call_peer(target_device, function_name, function_args)`:
+- `function_args` is a **JSON string** from the UI; the action `json.loads` it into a dict before
+  passing it to `call_device_action`.
+- e.g. call the sub's generic echo: `function_name="echo"`, `function_args={"message": "hello"}`.
+
+### Stopping
+
+Stop each process with `Ctrl+C` (or kill the two PIDs).
+
+---
+
+## Registry check (validate the package without launching)
+
+```bash
+cd device_package_lan_demo
+unilab --check_mode --devices ./lan_demo --external_devices_only
+```
+
+## Troubleshooting
+
+- Process exits right after start with "请前往 ... 注册实验室" / "register a lab": `--ak/--sk` were
+  missing or invalid. They are mandatory (see Prerequisites).
+- `[MessageProcessor] server registration code 200, previous process may not have exited`,
+  reconnecting repeatedly: a stale cloud session for the same account. It only affects cloud sync,
+  **not** the local ROS closed loop.
+- Slave hangs at startup: make sure the **host is started first** (the slave waits for the host
+  service). Add `--slave_no_host` to skip that wait.
+- Port already in use: give the host and slave **different** `--port` values.
+
+## Directory structure
+
+```
+device_package_lan_demo/
+├── README.md                     # English (this file)
+├── README_zh.md                  # 中文
+├── requirements.txt
+├── pyproject.toml
+├── .gitignore
+├── .github/workflows/check_registry.yml
+├── examples/                     # cross-device host/slave graphs
+│   ├── host.json                 # hub (host)
+│   └── slave.json                # sub (slave, --is_slave)
+└── lan_demo/                     # python package scanned by --devices
+    ├── __init__.py
+    ├── hub_node.py               # HubNodeDemo (hub)
+    └── status_reporter.py        # StatusReporterDemo (sub)
+```
