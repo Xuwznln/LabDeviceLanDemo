@@ -40,7 +40,9 @@ jobs:
             robostack-jazzy::ros2-distro-mutex=0.15 robostack-jazzy::ros-jazzy-ros-core \
             robostack-jazzy::ros-jazzy-action-msgs robostack-jazzy::ros-jazzy-std-msgs \
             robostack-jazzy::ros-jazzy-geometry-msgs robostack-jazzy::ros-jazzy-control-msgs \
-            robostack-jazzy::ros-jazzy-nav2-msgs robostack-jazzy::ros-jazzy-moveit-msgs -y
+            robostack-jazzy::ros-jazzy-nav2-msgs robostack-jazzy::ros-jazzy-moveit-msgs \
+            robostack-jazzy::ros-jazzy-tf-transformations robostack-jazzy::ros-jazzy-tf2-ros \
+            robostack-jazzy::ros-jazzy-tf2-ros-py conda-forge::transforms3d -y
       - name: Build unilabos_msgs and install runtime
         shell: bash -el {0}
         run: |
