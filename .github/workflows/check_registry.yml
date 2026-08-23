@@ -58,7 +58,7 @@ jobs:
         run: |
           source .ci/install/unilabos_msgs/setup.bash
           unilab --check_mode --skip_env_check --devices ./lan_demo --external_devices_only
-          python -m pytest -q tests/test_hostlink_smoke.py
+          python -m pytest -q tests/test_hostlink_smoke.py -p no:launch_testing -p no:launch_ros
       - name: Validate ROS2 closed loop
         shell: bash -el {0}
         run: |
