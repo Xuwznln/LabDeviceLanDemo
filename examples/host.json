@@ -2,15 +2,21 @@
     "nodes": [
         {
             "id": "hub_node",
+            "uuid": "4d6392d0-1495-4ef3-995f-101038cb1001",
             "name": "LAN演示-中枢节点(Host)",
             "children": [],
             "parent": null,
             "type": "device",
             "class": "hub_node_demo",
-            "position": {
-                "x": 200,
-                "y": 200,
-                "z": 0
+            "template_name": "hub_node_demo",
+            "sites_initialized": true,
+            "sites": [],
+            "pose": {
+                "position": {
+                    "x": 200,
+                    "y": 200,
+                    "z": 0
+                }
             },
             "config": {
                 "node_label": "hub",

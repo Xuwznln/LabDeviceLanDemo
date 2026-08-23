@@ -1,160 +1,143 @@
-# device_package_lan_demo
+# LabDeviceLanDemo
 
 **English** | [中文](README_zh.md)
 
-An external device package for Uni-Lab-OS that demonstrates a **LAN cross-device closed loop**: a
-central hub (host) and a sub device (slave) run as separate processes and demonstrate the full loop
-of cross-device `@subscribe` + remote control via `call_device_action` (ros action).
+A finite, runnable Uni-Lab-OS LAN demo. The same two drivers run on both
+`hostlink` and `ros2`:
+
+1. `status_reporter_demo` publishes `counter` and `state`;
+2. `hub_node_demo` receives them through cross-device `@subscribe`;
+3. after N updates, the hub calls the reporter's `stop_counting` action;
+4. the hub exposes `demo_complete=true` only after the remote action succeeds.
+
+There is no cloud inventory dependency and no AK/SK requirement. HTTP remains the local
+microbackend data plane; the device-to-device transport is selected by `--backend`.
+
+## Install from GitHub
+
+Recent Uni-Lab-OS versions accept an ordinary GitHub repository URL and discover the actual
+distribution name (`lan_demo`) after installation:
+
+```bash
+unilab package install https://github.com/Xuwznln/LabDeviceLanDemo --ref <commit-sha>
+```
+
+For development, clone this repository and run commands from its root.
 
 ## Devices
 
-| Device class           | Class                | Role                                                                              |
-| ---------------------- | -------------------- | -------------------------------------------------------------------------------- |
-| `hub_node_demo`        | `HubNodeDemo`        | Hub: cross-device subscribes the sub's `counter`; after N hits terminates the sub via ros action |
-| `status_reporter_demo` | `StatusReporterDemo` | Sub: a self-growing `counter` published periodically; current round can be terminated remotely |
+| Registry id | Role |
+| --- | --- |
+| `hub_node_demo` | subscribes to reporter status and invokes the remote action |
+| `status_reporter_demo` | publishes a growing counter and implements `stop_counting` |
 
-## Prerequisites
+Both declare `supported_backends=["hostlink", "ros2"]` and use only the shared `DeviceNode`
+contract. No driver calls ROS node APIs directly.
 
-```bash
-mamba activate unilab          # ROS 2 (humble) + unilabos environment
-cd <repo-root>                 # run all commands from the Uni-Lab-OS repo root
-```
+## Finite smoke test
 
-> **Credentials are mandatory.** `unilabos.app.main` exits immediately if `--ak` / `--sk` are not
-> provided (it needs a lab on the cloud). Reuse the AK/SK/addr from your IDE "test" run
-> configuration (or your own account at <https://leap-lab.bohrium.com>). `--upload_registry` is the
-> only optional cloud flag (it pushes the registry; drop it for a faster start). There is **no**
-> fully offline mode — `--ak/--sk/--addr` must always be present.
-
----
-
-## How it works
-
-```
-sub_reporter: counter self-grows (4/s) -> @topic_config publishes /devices/sub_reporter/counter
-        │  (1) cross-device @subscribe
-        ▼
-hub.on_sub_counter: accumulates the number of received messages
-        │  (2) if-check: from the first hit, once it reaches terminate_after (default 20)
-        ▼
-call_device_action(sub_reporter, "stop_counting")   (3) terminate the sub's current round via ros action
-        │
-        ▼
-sub counter resets to 0 (pause cycle_pause s) -> hub detects "round reset" -> starts the next round, repeat
-```
-
-### Framework features showcased
-
-- **Cross-device `@subscribe`**: `@subscribe(device_id="sub_reporter", status_name="counter")`
-  subscribes to *another* device's status topic. `@subscribe` is cross-device only — to read
-  your own status just use a getter.
-- **Auto `msg_type` + retry until established**: no `msg_type` is given. The framework retries
-  type resolution on an interval (default 10s, **no attempt cap, until subscribed**), so the hub
-  picks up the type from the ROS graph as soon as the sub comes online — **independent of
-  host/slave start order**. `retry_interval` only customizes the interval.
-  > Note: when relying on auto-detection, do NOT annotate the callback's first parameter with a
-  > Python built-in type (e.g. `value: int`), or it will be mistaken for `msg_type`.
-- **Values go through msg convert**: the callback value is always converted by
-  `convert_from_ros_msg` — `std_msgs` basics become native values (`Int32 -> int`,
-  `String -> str`), composite messages become dicts.
-- **`trigger_when_change`**: `on_sub_state` subscribes the sub's `state`, which is published
-  continuously but only fires the callback on a real `running <-> paused` transition.
-- **`call_device_action` (cross-device call)**:
-  `self._ros_node.call_device_action(device, action, kwargs_dict)` takes a **dict** (the framework
-  serializes internally), auto-detects whether to use a native ros action or the serial command
-  channel, and returns a parsed dict/native value. Remote failures raise `DeviceActionError`.
-
----
-
-## Launch tutorial (host first, then slave; two processes on one machine is fine)
-
-Both processes scan the same package (`--devices ./device_package_lan_demo/lan_demo`) and use
-`--external_devices_only`; only the graph file and `--is_slave` differ.
-**Always start the host first, then the slave** (the slave waits for the host service by default).
-
-**Step 1 — start the host (hub):**
+The smoke command starts real host and slave processes, waits for a proof JSON, validates the
+backend name and terminal state, then stops both processes. It never relies on an infinite log.
 
 ```bash
-python -m unilabos.app.main \
-  --devices ./device_package_lan_demo/lan_demo \
-  --external_devices_only \
-  --ak <YOUR_AK> --sk <YOUR_SK> --addr test --upload_registry \
+# No ROS installation required
+python -m lan_demo.smoke --backend hostlink --timeout 30
+
+# Run inside a ROS 2 Jazzy/Humble environment
+python -m lan_demo.smoke --backend ros2 --timeout 45
+```
+
+Successful output has this shape:
+
+```json
+{
+  "success": true,
+  "backend": "hostlink",
+  "received_count": 3,
+  "remote_action": "stop_counting",
+  "remote_result": {"success": true},
+  "closed_loops": 1
+}
+```
+
+The pytest form used by CI is:
+
+```bash
+pytest -q tests/test_hostlink_smoke.py
+```
+
+## Manual HostLink launch
+
+Choose one HostLink TCP port (7302 below). The management HTTP ports are independent.
+
+Host:
+
+```bash
+unilab --backend hostlink --skip_env_check \
+  --devices ./lan_demo --external_devices_only \
+  --hostlink_bind 0.0.0.0 --hostlink_port 7302 \
   --disable_browser --port 8101 \
-  -g ./device_package_lan_demo/examples/host.json
+  -g ./examples/host.json
 ```
 
-**Step 2 — in another terminal, start the slave (sub):**
+Slave (replace the host address on a real LAN):
 
 ```bash
-python -m unilabos.app.main \
-  --devices ./device_package_lan_demo/lan_demo \
-  --external_devices_only --is_slave \
-  --ak <YOUR_AK> --sk <YOUR_SK> --addr test --upload_registry \
+unilab --backend hostlink --skip_env_check \
+  --devices ./lan_demo --external_devices_only --is_slave \
+  --host_node_ip 192.168.1.10 --hostlink_port 7302 \
   --disable_browser --port 8102 \
-  -g ./device_package_lan_demo/examples/slave.json
+  -g ./examples/slave.json
 ```
 
-> PyCharm: duplicate the existing "test" run configuration (Module = `unilabos.app.main`, keep its
-> AK/SK/addr env), make host/slave copies, and set Parameters to the above.
-> For a real cross-machine LAN, put the two configs on two machines on the same LAN with a matching
-> `ROS_DOMAIN_ID`.
+HostLink reconnects after disconnects. `--host_node_ip` may be an IP address or DNS name; it is
+not the management HTTP address.
 
-### Expected output (verified)
+## Manual ROS2 launch
 
-This tutorial has been run end-to-end; the slave log cycles like this:
+Use the same graph files and driver logic. Both processes must share `ROS_DOMAIN_ID`.
 
-```
-[REPORT][sub] round 1 begins: counter grows from 0
-[REPORT][sub] stop_counting: round 1 terminated at 25, next round in 5.0s
-[REPORT][sub] round 2 begins: counter grows from 0
-[REPORT][sub] stop_counting: round 2 terminated at 19, next round in 5.0s
-... repeats indefinitely ...
-```
-
-Each `stop_counting` is triggered remotely by the hub once it has accumulated 20 received
-`counter` messages — proving cross-device subscribe, the ros-action remote call, and round-reset
-detection all work. You can also kill the slave and restart it: the host re-discovers it (DDS
-re-discovery) and re-subscribes automatically, no host restart needed.
-
-### Stopping
-
-Stop each process with `Ctrl+C` (or kill the two PIDs).
-
----
-
-## Registry check (validate the package without launching)
+Host:
 
 ```bash
-cd device_package_lan_demo
-unilab --check_mode --devices ./lan_demo --external_devices_only
+unilab --backend ros2 --disable_hostlink --skip_env_check \
+  --ros_domain_id 42 --devices ./lan_demo --external_devices_only \
+  --disable_browser --port 8101 -g ./examples/host.json
 ```
 
-## Troubleshooting
+Slave:
 
-- Process exits right after start with "请前往 ... 注册实验室" / "register a lab": `--ak/--sk` were
-  missing or invalid. They are mandatory (see Prerequisites).
-- `[MessageProcessor] server registration code 200, previous process may not have exited`,
-  reconnecting repeatedly: a stale cloud session for the same account. It only affects cloud sync,
-  **not** the local ROS closed loop.
-- Slave hangs at startup: make sure the **host is started first** (the slave waits for the host
-  service). Add `--slave_no_host` to skip that wait.
-- Port already in use: give the host and slave **different** `--port` values.
-
-## Directory structure
-
+```bash
+unilab --backend ros2 --disable_hostlink --skip_env_check --is_slave \
+  --ros_domain_id 42 --devices ./lan_demo --external_devices_only \
+  --disable_browser --port 8102 -g ./examples/slave.json
 ```
-device_package_lan_demo/
-├── README.md                     # English (this file)
-├── README_zh.md                  # 中文
-├── requirements.txt
-├── pyproject.toml
-├── .gitignore
-├── .github/workflows/check_registry.yml
-├── examples/                     # cross-device host/slave graphs
-│   ├── host.json                 # hub (host)
-│   └── slave.json                # sub (slave, --is_slave)
-└── lan_demo/                     # python package scanned by --devices
-    ├── __init__.py
-    ├── hub_node.py               # HubNodeDemo (hub)
-    └── status_reporter.py        # StatusReporterDemo (sub)
+
+## What is verified
+
+- cross-device status subscription (`counter` and edge-triggered `state`);
+- remote `stop_counting` action and its returned result;
+- backend-neutral `DeviceNode.call_device_action`;
+- strict graph identity (`uuid`, `template_name`, authoritative empty Site snapshots);
+- bounded completion via `closed_loops` and the smoke proof JSON.
+
+## Registry-only check
+
+The registry check imports ROS message definitions, so run it in the repository's supported ROS
+environment:
+
+```bash
+unilab --check_mode --skip_env_check --devices ./lan_demo --external_devices_only
+```
+
+## Layout
+
+```text
+.
+├── examples/host.json
+├── examples/slave.json
+├── lan_demo/hub_node.py
+├── lan_demo/status_reporter.py
+├── lan_demo/smoke.py
+└── tests/test_hostlink_smoke.py
 ```

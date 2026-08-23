@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lan_demo"
-version = "0.1.0"
-description = "Uni-Lab-OS LAN 演示设备包：跨设备 @subscribe + call_device_action 闭环 (host/slave)"
+version = "0.2.0"
+description = "Uni-Lab-OS LAN 双运行时演示：跨设备 @subscribe + call_device_action 闭环"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = { text = "MIT" }
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["unilabos"]
+dev = ["unilabos", "pytest>=8"]
 
 [tool.setuptools.packages.find]
 include = ["lan_demo*"]

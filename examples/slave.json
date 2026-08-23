@@ -2,15 +2,21 @@
     "nodes": [
         {
             "id": "sub_reporter",
+            "uuid": "4d6392d0-1495-4ef3-995f-101038cb2001",
             "name": "LAN演示-子设备状态上报(Slave)",
             "children": [],
             "parent": null,
             "type": "device",
             "class": "status_reporter_demo",
-            "position": {
-                "x": 600,
-                "y": 200,
-                "z": 0
+            "template_name": "status_reporter_demo",
+            "sites_initialized": true,
+            "sites": [],
+            "pose": {
+                "position": {
+                    "x": 600,
+                    "y": 200,
+                    "z": 0
+                }
             },
             "config": {
                 "node_label": "sub",

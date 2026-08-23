@@ -5,13 +5,14 @@
 
 - counter 自增长（默认 4 个/秒），通过 @topic_config 周期发布到 /devices/<id>/counter；
 - 同时发布 heartbeat、state，局域网内任何节点（尤其是中枢节点）都能订阅；
-- 暴露 stop_counting 动作：被中枢节点通过 ros action 调用以「终止当前轮」，
+- 暴露 stop_counting 动作：被中枢节点远程调用以「终止当前轮」，
   终止后暂停 cycle_pause 秒自动开下一轮，从 0 重新增长（counter 呈锯齿形，便于持续演示）。
 
 它本身不知道、也不关心谁在订阅它、谁来终止它 —— 控制逻辑全在中枢节点。
 """
 
 import logging
+import os
 import threading
 import time
 from typing import Any, Optional
@@ -34,10 +35,13 @@ class StopResult(TypedDict):
     id="status_reporter_demo",
     display_name="子设备-状态上报",
     category=["virtual_device"],
-    description="子设备：counter 自增长并周期上报状态；可被中枢节点通过 ros action 终止当前轮",
+    description="子设备：counter 自增长并周期上报状态；可被中枢节点远程终止当前轮",
+    supported_backends=["hostlink", "ros2"],
 )
 class StatusReporterDemo:
-    """子设备：counter 自增长 + 周期上报；stop_counting 可被远程 ros action 终止当前轮。"""
+    """子设备：counter 自增长 + 周期上报；stop_counting 可被远程终止。"""
+
+    run_in_test_mode = True
 
     def __init__(
         self,
@@ -59,12 +63,14 @@ class StatusReporterDemo:
         """
         self.device_id = device_id or "status_reporter_demo"
         self.node_label = node_label
-        self._count_rate = float(count_rate)
-        self._cycle_pause = float(cycle_pause)
+        self._count_rate = float(os.environ.get("LAN_DEMO_COUNT_RATE", count_rate))
+        self._cycle_pause = float(
+            os.environ.get("LAN_DEMO_CYCLE_PAUSE", cycle_pause)
+        )
         self._auto_start = bool(auto_start)
         self.logger = logging.getLogger(f"StatusReporter.{self.device_id}")
 
-        self._ros_node: Any = None
+        self._device_node: Any = None
         self._start_time: float = time.time()
         self._grow_begin: float = time.time()
         self._counter: int = 0
@@ -74,9 +80,9 @@ class StatusReporterDemo:
         self.logger.info(f"=== 子设备-状态上报 {self.device_id} 已创建 (label={self.node_label}) ===")
 
     @not_action
-    def post_init(self, ros_node: Any):
-        """ROS 节点初始化后回调：拿到 _ros_node，并按需自动开第一轮。"""
-        self._ros_node = ros_node
+    def post_init(self, node: Any):
+        """绑定通用 DeviceNode，并按需自动开第一轮。"""
+        self._device_node = node
         if self._auto_start:
             self._begin_round()
 
@@ -120,7 +126,7 @@ class StatusReporterDemo:
     # ============ 可被中枢节点远程调用的动作 ============
 
     @action(
-        description="终止当前轮 counter 自增长（中枢节点通过 ros action 调用），随后自动开下一轮",
+        description="终止当前轮 counter 自增长（中枢节点远程调用），随后自动开下一轮",
         always_free=True,
         feedback_interval=1.0,
     )
