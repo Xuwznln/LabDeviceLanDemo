@@ -39,7 +39,8 @@ jobs:
             conda-forge::numpy=2 conda-forge::uv conda-forge::colcon-common-extensions \
             robostack-jazzy::ros2-distro-mutex=0.15 robostack-jazzy::ros-jazzy-ros-core \
             robostack-jazzy::ros-jazzy-action-msgs robostack-jazzy::ros-jazzy-std-msgs \
-            robostack-jazzy::ros-jazzy-geometry-msgs -y
+            robostack-jazzy::ros-jazzy-geometry-msgs robostack-jazzy::ros-jazzy-control-msgs \
+            robostack-jazzy::ros-jazzy-nav2-msgs -y
       - name: Build unilabos_msgs and install runtime
         shell: bash -el {0}
         run: |
