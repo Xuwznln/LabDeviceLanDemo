@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: deepmodeling/Uni-Lab-OS
-          ref: 06c80c6d22031eabe0c3f36a9c47d6d5e65561d0
+          ref: 1a2cfd31d3d48a495b0eb8d09a906df769a3a363
           path: .ci/unilabos
       - uses: conda-incubator/setup-miniconda@v4
         with:
