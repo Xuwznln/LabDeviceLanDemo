@@ -9,6 +9,7 @@ from pathlib import Path
 import socket
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import time
 from typing import Any, Sequence
@@ -60,6 +61,24 @@ def _stop(process: subprocess.Popen[Any]) -> None:
     except subprocess.TimeoutExpired:
         process.kill()
         process.wait(timeout=5)
+
+
+def _graph_path(repo_root: Path, filename: str) -> Path:
+    """优先读取 wheel 安装的数据文件，editable/source 模式回退到仓库 examples。"""
+
+    installed = (
+        Path(sysconfig.get_path("data"))
+        / "share"
+        / "lan_demo"
+        / "examples"
+        / filename
+    )
+    if installed.is_file():
+        return installed
+    source = repo_root / "examples" / filename
+    if source.is_file():
+        return source
+    raise FileNotFoundError(f"LAN demo graph 未随 distribution 安装: {filename}")
 
 
 def _base_command(
@@ -124,14 +143,14 @@ def run_smoke(backend: str = "hostlink", timeout: float = 30.0) -> dict[str, Any
         hostlink_port = _free_port()
         host_command = _base_command(
             repo_root,
-            repo_root / "examples" / "host.json",
+            _graph_path(repo_root, "host.json"),
             root / "host-db",
             _free_port(),
             backend,
         )
         slave_command = _base_command(
             repo_root,
-            repo_root / "examples" / "slave.json",
+            _graph_path(repo_root, "slave.json"),
             root / "slave-db",
             _free_port(),
             backend,

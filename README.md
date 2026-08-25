@@ -60,11 +60,10 @@ Successful output has this shape:
 }
 ```
 
-The pytest form used by CI is:
-
-```bash
-pytest -q tests/test_hostlink_smoke.py
-```
+CI installs this repository through the ordinary GitHub URL plus the exact commit SHA, changes
+to a directory outside the checkout, and then runs the two commands above in one Jazzy job. A
+scheduled run checks Uni-Lab-OS `dev` at 08:00 Beijing time each day and only repeats the full
+smoke when that branch has a new SHA (failed SHAs are retried).
 
 ## Manual HostLink launch
 

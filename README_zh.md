@@ -48,11 +48,9 @@ python -m lan_demo.smoke --backend ros2 --timeout 45
 }
 ```
 
-CI 使用的 pytest 入口：
-
-```bash
-pytest -q tests/test_hostlink_smoke.py
-```
+CI 会通过普通 GitHub URL 加当前精确提交 SHA 安装本仓库，然后切换到 checkout 之外的
+临时目录，在同一个 Jazzy job 中运行上面两条命令。每天北京时间 08:00 还会检查
+Uni-Lab-OS `dev`；只有该分支出现新 SHA 才重新跑完整 smoke，失败的 SHA 次日继续重试。
 
 ## 手动启动 HostLink
 

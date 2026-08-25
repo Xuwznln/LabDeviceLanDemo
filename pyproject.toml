@@ -16,3 +16,6 @@ dev = ["unilabos", "pytest>=8"]
 
 [tool.setuptools.packages.find]
 include = ["lan_demo*"]
+
+[tool.setuptools.data-files]
+"share/lan_demo/examples" = ["examples/*.json"]
