@@ -83,6 +83,8 @@ class HubNodeDemo:
         self._closed_loops: int = 0  # 已确认远程动作成功的闭环次数
         self._last_action: str = "（暂无）"
         self._pending_reset: bool = False  # 已触发终止、等待子设备归零
+        self._trigger_received_count: int = 0
+        self._control_transitions: list[str] = ["idle"]
 
         self.logger.info(
             f"=== 中枢节点 {self.device_id} 已创建 (label={self.node_label}, sub={self._sub_device}) ==="
@@ -153,6 +155,7 @@ class HubNodeDemo:
             if self._pending_reset:
                 self._pending_reset = False
                 self._recv_count = 0
+                self._control_transitions.append("reset_observed")
                 self.logger.info(f"[HUB][{self.node_label}] 检测到子设备已终止/重置，开始下一轮计数")
             return
 
@@ -168,6 +171,8 @@ class HubNodeDemo:
         if self._recv_count >= self._terminate_after:
             self._pending_reset = True
             self._terminations += 1
+            self._trigger_received_count = self._recv_count
+            self._control_transitions.append("terminating")
             self._last_action = f"terminate@{value} (#{self._terminations})"
             self.logger.info(
                 f"[HUB][{self.node_label}] 已累计收到 {self._recv_count} 次（阈值 {self._terminate_after}），"
@@ -195,6 +200,7 @@ class HubNodeDemo:
                 timeout=5.0,
             )
             self._closed_loops += 1
+            self._control_transitions.append("closed_loop")
             self._last_action = f"closed-loop@{value} (#{self._closed_loops})"
             self._write_smoke_proof(value, reply)
             self.logger.info(f"[HUB][{self.node_label}] 远程终止子设备成功: {reply}")
@@ -215,9 +221,15 @@ class HubNodeDemo:
             "backend": str(getattr(self._device_node, "backend_name", "unknown")),
             "subscribed_counter": int(value),
             "received_count": self._recv_count,
+            "trigger_received_count": self._trigger_received_count,
+            "terminate_after": self._terminate_after,
+            "terminations": self._terminations,
             "remote_action": "stop_counting",
             "remote_result": reply,
             "closed_loops": self._closed_loops,
+            "last_action": self._last_action,
+            "pending_reset": self._pending_reset,
+            "control_transitions": list(self._control_transitions),
         }
         temporary = proof_path.with_suffix(proof_path.suffix + ".tmp")
         temporary.write_text(

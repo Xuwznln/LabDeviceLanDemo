@@ -55,13 +55,13 @@ jobs:
           uv pip install -r .ci/unilabos/unilabos/utils/requirements.txt
           uv pip install pywinauto git+https://github.com/Xuwznln/pylabrobot.git
           uv pip install pytest -e .ci/unilabos -e .
-      - name: Validate registry and HostLink closed loop
+      - name: Validate registry and assert HostLink state/action contract
         shell: bash -el {0}
         run: |
           source .ci/install/unilabos_msgs/setup.bash
           unilab --check_mode --skip_env_check --devices ./lan_demo --external_devices_only
           python -m pytest -q tests/test_hostlink_smoke.py -p no:launch_testing -p no:launch_ros
-      - name: Validate ROS2 closed loop
+      - name: Assert ROS2 state/action contract
         shell: bash -el {0}
         run: |
           source .ci/install/unilabos_msgs/setup.bash

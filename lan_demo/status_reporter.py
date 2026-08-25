@@ -29,6 +29,8 @@ class StopResult(TypedDict):
     node_label: str
     stopped_at: int
     round_index: int
+    state: str
+    counter: int
 
 
 @device(
@@ -145,6 +147,8 @@ class StatusReporterDemo:
             "node_label": self.node_label,
             "stopped_at": stopped_at,
             "round_index": self._round_index,
+            "state": self.state,
+            "counter": self.counter,
         }
 
     @action(description="立即开始一轮自增长（手动）", always_free=True, feedback_interval=1.0)

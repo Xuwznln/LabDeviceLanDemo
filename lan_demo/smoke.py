@@ -14,6 +14,37 @@ import time
 from typing import Any, Sequence
 
 
+def assert_smoke_proof(proof: dict[str, Any], backend: str) -> None:
+    """对 HostLink/ROS2 共用的订阅、状态变化和远程动作结果做同一组断言。"""
+
+    assert proof.get("success") is True, f"smoke 未成功: {proof}"
+    assert proof.get("backend") == backend, f"backend 不匹配: {proof}"
+    assert proof["subscribed_counter"] > 0
+    assert proof["terminate_after"] == 3
+    assert proof["trigger_received_count"] >= proof["terminate_after"]
+    assert 0 <= proof["received_count"] <= proof["trigger_received_count"]
+    assert proof["terminations"] == 1
+    assert proof["closed_loops"] == 1
+    assert isinstance(proof["pending_reset"], bool)
+    assert proof["remote_action"] == "stop_counting"
+    assert proof["last_action"] == (
+        f"closed-loop@{proof['subscribed_counter']} (#1)"
+    )
+    transitions = proof["control_transitions"]
+    assert transitions[0] == "idle"
+    assert "terminating" in transitions
+    assert "closed_loop" in transitions
+    assert transitions.index("terminating") < transitions.index("closed_loop")
+
+    remote_result = proof["remote_result"]
+    assert remote_result["success"] is True
+    assert remote_result["node_label"] == "sub"
+    assert remote_result["round_index"] == 1
+    assert remote_result["stopped_at"] >= proof["subscribed_counter"]
+    assert remote_result["state"] == "paused"
+    assert remote_result["counter"] == 0
+
+
 def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
         server.bind(("127.0.0.1", 0))
@@ -173,10 +204,8 @@ def run_smoke(backend: str = "hostlink", timeout: float = 30.0) -> dict[str, Any
                 while time.monotonic() < deadline:
                     if proof_path.is_file():
                         proof = json.loads(proof_path.read_text(encoding="utf-8"))
-                        if proof.get("success") is True:
-                            if proof.get("backend") != backend:
-                                raise RuntimeError(f"unexpected backend proof: {proof}")
-                            return proof
+                        assert_smoke_proof(proof, backend)
+                        return proof
                     if host.poll() is not None or slave.poll() is not None:
                         break
                     time.sleep(0.1)
