@@ -82,9 +82,11 @@ is exactly what a frontend does when creating and running workflows live:
 - `GET /api/v1/workflow-tasks/{uuid}` polls the terminal state;
 - `GET /api/v1/workflow-tasks/{uuid}/jobs` verifies each node job's `return_info`.
 
-All three steps target one device, so the scheduler serializes them; the
-`round_index` returned by `start_counting` is strictly greater than the round
-stopped by `stop_counting`, proving declaration-order execution.
+Declarative `@workflow` steps run strictly serially (each node's
+`execution_policy.depends_on` points at the previous step and becomes a DAG
+dependency edge); the `round_index` returned by `start_counting` is strictly
+greater than the round stopped by `stop_counting`, proving declaration-order
+execution.
 
 CI installs this repository through the ordinary GitHub URL plus the exact commit SHA, changes
 to a directory outside the checkout, and then runs the two commands above in one Jazzy job. A

@@ -67,7 +67,8 @@ smoke 的阶段二完全通过管理 HTTP API 驱动，等价于用户在前端�
 - `GET /api/v1/workflow-tasks/{uuid}` 轮询终态；
 - `GET /api/v1/workflow-tasks/{uuid}/jobs` 校验每个节点 job 的 `return_info`。
 
-三步同一设备，调度器保证串行；`start_counting` 返回的 `round_index` 严格大于
+声明式 `@workflow` 步骤严格串行（每步节点的 `execution_policy.depends_on`
+指向上一步并成为 DAG 依赖边）；`start_counting` 返回的 `round_index` 严格大于
 `stop_counting` 的轮次，证明执行顺序与声明一致。
 
 CI 会通过普通 GitHub URL 加当前精确提交 SHA 安装本仓库，然后切换到 checkout 之外的

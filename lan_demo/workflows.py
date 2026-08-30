@@ -6,7 +6,7 @@ host 启动时由主仓 AST 扫描发现本模块（@workflow），import 后按
 三步全部指向 slave 图里的 sub_reporter（host 图之外的设备）：
 - 上报时设备不在 host 目录，material_uuid 用稳定占位；
 - 调度按节点 meta_data.target_device_id 寻址，经 HostLink 网关路由到 slave；
-- 三步同一设备，调度器保证串行，节点 uuid 序 == 声明序。
+- 三步严格串行（execution_policy.depends_on 依赖边），节点 uuid 序 == 声明序。
 """
 
 from unilabos.registry.workflows import WorkflowBuildContext, workflow
