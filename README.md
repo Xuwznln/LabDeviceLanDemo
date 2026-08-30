@@ -56,9 +56,35 @@ Successful output has this shape:
   "received_count": 3,
   "remote_action": "stop_counting",
   "remote_result": {"success": true},
-  "closed_loops": 1
+  "closed_loops": 1,
+  "workflow": {
+    "workflow_name": "LAN 远程轮次控制",
+    "task_status": "succeeded",
+    "jobs": [{"status": "succeeded"}, {"status": "succeeded"}, {"status": "succeeded"}]
+  }
 }
 ```
+
+## Default sub-workflow
+
+`lan_demo/workflows.py` declares the "LAN 远程轮次控制" workflow with the core
+`@workflow` decorator: three steps (`echo -> stop_counting -> start_counting`),
+all targeting `sub_reporter` from the slave graph. On host startup the AST scan
+discovers the module and the definition is upserted into the local Workflow
+Authority under a stable uuid derived from the function path, so restarts and
+reinstalls never create duplicates.
+
+Stage two of the smoke drives everything through the management HTTP API, which
+is exactly what a frontend does when creating and running workflows live:
+
+- `GET /api/v1/workflows` finds the reported definition by display name;
+- `POST /api/v1/workflow-tasks` starts one run (`{"workflow_uuid": ..., "run_mode": "normal"}`);
+- `GET /api/v1/workflow-tasks/{uuid}` polls the terminal state;
+- `GET /api/v1/workflow-tasks/{uuid}/jobs` verifies each node job's `return_info`.
+
+All three steps target one device, so the scheduler serializes them; the
+`round_index` returned by `start_counting` is strictly greater than the round
+stopped by `stop_counting`, proving declaration-order execution.
 
 CI installs this repository through the ordinary GitHub URL plus the exact commit SHA, changes
 to a directory outside the checkout, and then runs the two commands above in one Jazzy job. A

@@ -35,7 +35,7 @@ class StopResult(TypedDict):
 
 @device(
     id="status_reporter_demo",
-    display_name="子设备-状态上报",
+    displayname="子设备-状态上报",
     category=["virtual_device"],
     description="子设备：counter 自增长并周期上报状态；可被中枢节点远程终止当前轮",
     supported_backends=["hostlink", "ros2"],
@@ -128,6 +128,7 @@ class StatusReporterDemo:
     # ============ 可被中枢节点远程调用的动作 ============
 
     @action(
+        display_name="终止当前轮",
         description="终止当前轮 counter 自增长（中枢节点远程调用），随后自动开下一轮",
         always_free=True,
         feedback_interval=1.0,
@@ -151,13 +152,23 @@ class StatusReporterDemo:
             "counter": self.counter,
         }
 
-    @action(description="立即开始一轮自增长（手动）", always_free=True, feedback_interval=1.0)
+    @action(
+        display_name="开始一轮计数",
+        description="立即开始一轮自增长（手动）",
+        always_free=True,
+        feedback_interval=1.0,
+    )
     def start_counting(self) -> dict:
         """立即开启新一轮自增长。"""
         self._begin_round()
         return {"success": True, "node_label": self.node_label, "round_index": self._round_index}
 
-    @action(description="回显消息（通用被调用目标）", always_free=True, feedback_interval=1.0)
+    @action(
+        display_name="回显消息",
+        description="回显消息（通用被调用目标）",
+        always_free=True,
+        feedback_interval=1.0,
+    )
     def echo(self, message: str = "ping") -> dict:
         """回显收到的消息，可作为跨设备调用的通用目标。
 

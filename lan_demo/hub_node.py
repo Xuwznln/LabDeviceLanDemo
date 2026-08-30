@@ -42,7 +42,7 @@ SUB_DEVICE_ID = "sub_reporter"
 
 @device(
     id="hub_node_demo",
-    display_name="中枢节点",
+    displayname="中枢节点",
     category=["virtual_device"],
     description="中枢节点：跨设备订阅子设备 counter，累计满 N 次后远程终止子设备当前轮",
     supported_backends=["hostlink", "ros2"],

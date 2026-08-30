@@ -44,9 +44,31 @@ python -m lan_demo.smoke --backend ros2 --timeout 45
   "received_count": 3,
   "remote_action": "stop_counting",
   "remote_result": {"success": true},
-  "closed_loops": 1
+  "closed_loops": 1,
+  "workflow": {
+    "workflow_name": "LAN 远程轮次控制",
+    "task_status": "succeeded",
+    "jobs": [{"status": "succeeded"}, {"status": "succeeded"}, {"status": "succeeded"}]
+  }
 }
 ```
+
+## 默认子工作流
+
+`lan_demo/workflows.py` 用主仓的 `@workflow` 装饰器声明了「LAN 远程轮次控制」：
+`echo -> stop_counting -> start_counting` 三步全部指向 slave 图里的 `sub_reporter`。
+host 启动时 AST 扫描发现该模块，按函数相对路径派生稳定 uuid 幂等上报到本机
+Workflow Authority——重启/重装不会产生重复工作流。
+
+smoke 的阶段二完全通过管理 HTTP API 驱动，等价于用户在前端实时创建并运行工作流：
+
+- `GET /api/v1/workflows` 按显示名检索上报结果；
+- `POST /api/v1/workflow-tasks` 创建一次运行（`{"workflow_uuid": ..., "run_mode": "normal"}`）；
+- `GET /api/v1/workflow-tasks/{uuid}` 轮询终态；
+- `GET /api/v1/workflow-tasks/{uuid}/jobs` 校验每个节点 job 的 `return_info`。
+
+三步同一设备，调度器保证串行；`start_counting` 返回的 `round_index` 严格大于
+`stop_counting` 的轮次，证明执行顺序与声明一致。
 
 CI 会通过普通 GitHub URL 加当前精确提交 SHA 安装本仓库，然后切换到 checkout 之外的
 临时目录，在同一个 Jazzy job 中运行上面两条命令。每天北京时间 08:00 还会检查
