@@ -6,3 +6,5 @@ dist/
 .venv/
 .idea/
 .vscode/
+session.json
+session.lock

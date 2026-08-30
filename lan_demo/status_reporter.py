@@ -35,7 +35,7 @@ class StopResult(TypedDict):
 
 @device(
     id="status_reporter_demo",
-    displayname="子设备-状态上报",
+    display_name="子设备-状态上报",
     category=["virtual_device"],
     description="子设备：counter 自增长并周期上报状态；可被中枢节点远程终止当前轮",
     supported_backends=["hostlink", "ros2"],
