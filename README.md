@@ -1,4 +1,4 @@
-# LabDeviceLanDemo
+# Uni-Lab-OS LAN Demo
 
 **English** | [中文](README_zh.md)
 
