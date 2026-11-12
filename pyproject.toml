@@ -7,7 +7,7 @@ name = "lan_demo"
 version = "0.2.0"
 description = "Uni-Lab-OS LAN 双运行时演示：跨设备 @subscribe + call_device_action 闭环"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 license = { text = "MIT" }
 dependencies = []
 

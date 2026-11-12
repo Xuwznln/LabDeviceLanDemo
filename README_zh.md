@@ -15,11 +15,21 @@
 
 ## 从 GitHub 安装
 
-新版 Uni-Lab-OS 可以直接接收普通 GitHub 地址，并在安装后识别实际分发名
-`lan_demo`：
+需要统一版 Uni-Lab-OS 核心（dev 架构 + V1.0 HTTP API），仅支持 **CPython 3.14**；配套 wheel
+（PyLabRobot 维护分支 `1.0.0b1+unilabos…` 与 `opentrons-shared-data 10.1.0+unilabos.np2.1`）
+用核心的 `scripts/build_wheel_release.py --dependencies-only` 构建，安装时经 `--find-links` 提供。
+ROS 2 运行使用为 cp314 构建的 RoboStack Jazzy（`ros2-distro-mutex` 0.20）。
+
+Host 运行时（`unilab --backend hostlink`）经管理 API 安装，来源是 GitHub 地址，可附 `@<commit-sha>`：
 
 ```bash
-unilab package install https://github.com/Xuwznln/LabDeviceLanDemo --ref <commit-sha>
+unilab package install https://github.com/Xuwznln/LabDeviceLanDemo@<commit-sha> --wait
+```
+
+也可以直接装进当前 Python 环境（CI 即如此）：
+
+```bash
+python -m pip install "git+https://github.com/Xuwznln/LabDeviceLanDemo@<commit-sha>"
 ```
 
 ## 有限时 smoke
@@ -60,9 +70,12 @@ python -m lan_demo.smoke --backend ros2 --timeout 45
 host 启动时 AST 扫描发现该模块，按函数相对路径派生稳定 uuid 幂等上报到本机
 Workflow Authority——重启/重装不会产生重复工作流。
 
-smoke 的阶段二完全通过管理 HTTP API 驱动，等价于用户在前端实时创建并运行工作流：
+smoke 的阶段二完全通过管理 HTTP API 驱动，等价于用户在前端实时创建并运行工作流。
+`/api/v1` 的 JSON 响应一律是 V1 信封 `{"code": 0, "data": ...}`，写请求在 `X-UniLab-Token`
+请求头里携带控制面 token（由 smoke 生成并交给它拉起的运行时）：
 
-- `GET /api/v1/workflows` 按显示名检索上报结果；
+- `GET /api/v1/registry/workflow-templates` 按显示名检索上报的模板；
+- `POST /api/v1/workflows/from-template` 实例化（`{"template_uuid": ..., "bindings": {}}`）；
 - `POST /api/v1/workflow-tasks` 创建一次运行（`{"workflow_uuid": ..., "run_mode": "normal"}`）；
 - `GET /api/v1/workflow-tasks/{uuid}` 轮询终态；
 - `GET /api/v1/workflow-tasks/{uuid}/jobs` 校验每个节点 job 的 `return_info`。
@@ -71,8 +84,8 @@ smoke 的阶段二完全通过管理 HTTP API 驱动，等价于用户在前端�
 指向上一步并成为 DAG 依赖边）；`start_counting` 返回的 `round_index` 严格大于
 `stop_counting` 的轮次，证明执行顺序与声明一致。
 
-CI 会通过普通 GitHub URL 加当前精确提交 SHA 安装本仓库，然后切换到 checkout 之外的
-临时目录，在同一个 Jazzy job 中运行上面两条命令。每天北京时间 08:00 还会检查
+CI（CPython 3.14，RoboStack Jazzy、`ros2-distro-mutex` 0.20）会通过普通 GitHub URL 加当前
+精确提交 SHA 安装本仓库，然后切换到 checkout 之外的临时目录，在同一个 Jazzy job 中运行上面两条命令。每天北京时间 08:00 还会检查
 Uni-Lab-OS `dev`；只有该分支出现新 SHA 才重新跑完整 smoke，失败的 SHA 次日继续重试。
 
 ## 手动启动 HostLink

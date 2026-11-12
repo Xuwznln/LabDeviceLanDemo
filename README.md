@@ -15,11 +15,23 @@ microbackend data plane; the device-to-device transport is selected by `--backen
 
 ## Install from GitHub
 
-Recent Uni-Lab-OS versions accept an ordinary GitHub repository URL and discover the actual
-distribution name (`lan_demo`) after installation:
+Requires the unified Uni-Lab-OS core (dev architecture with the V1.0 HTTP API) on
+**CPython 3.14**, plus its companion wheels: the maintained PyLabRobot fork
+`1.0.0b1+unilabos…` and `opentrons-shared-data 10.1.0+unilabos.np2.1`. Build them with the
+core's `scripts/build_wheel_release.py --dependencies-only` and install with `--find-links`.
+ROS 2 runs use RoboStack Jazzy built for cp314 (`ros2-distro-mutex` 0.20).
+
+With a Host running (`unilab --backend hostlink`), install through its management API. The
+spec is the GitHub URL with an optional `@<commit-sha>`:
 
 ```bash
-unilab package install https://github.com/Xuwznln/LabDeviceLanDemo --ref <commit-sha>
+unilab package install https://github.com/Xuwznln/LabDeviceLanDemo@<commit-sha> --wait
+```
+
+Or install the distribution into the current Python environment (this is what CI does):
+
+```bash
+python -m pip install "git+https://github.com/Xuwznln/LabDeviceLanDemo@<commit-sha>"
 ```
 
 For development, clone this repository and run commands from its root.
@@ -71,13 +83,17 @@ Successful output has this shape:
 `@workflow` decorator: three steps (`echo -> stop_counting -> start_counting`),
 all targeting `sub_reporter` from the slave graph. On host startup the AST scan
 discovers the module and the definition is upserted into the local Workflow
-Authority under a stable uuid derived from the function path, so restarts and
+Authority as a template under a stable uuid derived from the function path, so restarts and
 reinstalls never create duplicates.
 
 Stage two of the smoke drives everything through the management HTTP API, which
-is exactly what a frontend does when creating and running workflows live:
+is exactly what a frontend does when creating and running workflows live. Every
+`/api/v1` JSON response is the V1 envelope `{"code": 0, "data": ...}`, and writes carry the
+control token in the `X-UniLab-Token` header (the smoke chooses the token and hands it to the
+runtime it starts):
 
-- `GET /api/v1/workflows` finds the reported definition by display name;
+- `GET /api/v1/registry/workflow-templates` finds the reported template by display name;
+- `POST /api/v1/workflows/from-template` instantiates it (`{"template_uuid": ..., "bindings": {}}`);
 - `POST /api/v1/workflow-tasks` starts one run (`{"workflow_uuid": ..., "run_mode": "normal"}`);
 - `GET /api/v1/workflow-tasks/{uuid}` polls the terminal state;
 - `GET /api/v1/workflow-tasks/{uuid}/jobs` verifies each node job's `return_info`.
@@ -88,8 +104,9 @@ dependency edge); the `round_index` returned by `start_counting` is strictly
 greater than the round stopped by `stop_counting`, proving declaration-order
 execution.
 
-CI installs this repository through the ordinary GitHub URL plus the exact commit SHA, changes
-to a directory outside the checkout, and then runs the two commands above in one Jazzy job. A
+CI (CPython 3.14, RoboStack Jazzy with `ros2-distro-mutex` 0.20) installs this repository
+through the ordinary GitHub URL plus the exact commit SHA, changes to a directory outside the
+checkout, and then runs the two commands above in one Jazzy job. A
 scheduled run checks Uni-Lab-OS `dev` at 08:00 Beijing time each day and only repeats the full
 smoke when that branch has a new SHA (failed SHAs are retried).
 
