@@ -105,8 +105,11 @@ Slave（跨机器时把地址换成 Host 的局域网 IP/DNS）：
 unilab --backend hostlink --skip_env_check \
   --devices ./lan_demo --external_devices_only --is_slave \
   --host_node_ip 192.168.1.10 --hostlink_port 7302 \
-  --disable_browser --port 8102 -g ./examples/slave.json
+  --disable_browser --port 8102 --server_database_root ./slave-data \
+  -g ./examples/slave.json
 ```
+
+在同一台机器上运行时，slave 必须用自己的数据目录（`--server_database_root`）：一个数据库根目录只能由一个实例占用，第二个实例启动即以退出码 73 失败。
 
 `--hostlink_port` 是设备链路 TCP 端口，和 `--port` 的管理 HTTP 端口互不相干；
 HostLink 断开后会持续重连。
@@ -128,7 +131,8 @@ Slave：
 ```bash
 unilab --backend ros2 --disable_hostlink --skip_env_check --is_slave \
   --ros_domain_id 42 --devices ./lan_demo --external_devices_only \
-  --disable_browser --port 8102 -g ./examples/slave.json
+  --disable_browser --port 8102 --server_database_root ./slave-data \
+  -g ./examples/slave.json
 ```
 
 ## 验收内容
