@@ -130,9 +130,11 @@ Slave (replace the host address on a real LAN):
 unilab --backend hostlink --skip_env_check \
   --devices ./lan_demo --external_devices_only --is_slave \
   --host_node_ip 192.168.1.10 --hostlink_port 7302 \
-  --disable_browser --port 8102 \
+  --disable_browser --port 8102 --server_database_root ./slave-data \
   -g ./examples/slave.json
 ```
+
+On one machine the slave needs its own data directory (`--server_database_root`): one instance owns one database root, and a second instance on the same root exits with code 73.
 
 HostLink reconnects after disconnects. `--host_node_ip` may be an IP address or DNS name; it is
 not the management HTTP address.
@@ -154,7 +156,8 @@ Slave:
 ```bash
 unilab --backend ros2 --disable_hostlink --skip_env_check --is_slave \
   --ros_domain_id 42 --devices ./lan_demo --external_devices_only \
-  --disable_browser --port 8102 -g ./examples/slave.json
+  --disable_browser --port 8102 --server_database_root ./slave-data \
+  -g ./examples/slave.json
 ```
 
 ## What is verified
