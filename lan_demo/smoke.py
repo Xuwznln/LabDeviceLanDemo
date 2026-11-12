@@ -314,7 +314,10 @@ def run_smoke(backend: str = "hostlink", timeout: float = 30.0) -> dict[str, Any
             )
             slave: subprocess.Popen[Any] | None = None
             try:
-                startup_deadline = time.monotonic() + min(8.0, timeout / 2)
+                # 默认拓扑是「调度权威 → Host 子进程」：HostLink 端口由 Host 子进程打开，比管理端口晚
+                # 若干秒。slave 只重试几秒就放弃，所以必须等 host 端口真正可连再启动 slave。
+                startup_deadline = time.monotonic() + timeout
+                hostlink_ready = False
                 while time.monotonic() < startup_deadline:
                     if host.poll() is not None:
                         break
@@ -322,14 +325,16 @@ def run_smoke(backend: str = "hostlink", timeout: float = 30.0) -> dict[str, Any
                         with socket.create_connection(
                             ("127.0.0.1", hostlink_port), timeout=0.2
                         ):
+                            hostlink_ready = True
                             break
                     except OSError:
                         pass
                     time.sleep(0.05)
-                if host.poll() is not None:
+                if not hostlink_ready:
                     host_log.flush()
+                    reason = "exited" if host.poll() is not None else f"did not open HostLink within {timeout}s"
                     raise RuntimeError(
-                        "host process exited before slave startup\n"
+                        f"host process {reason} before slave startup\n"
                         + host_log_path.read_text(encoding="utf-8", errors="replace")
                     )
                 slave = subprocess.Popen(
