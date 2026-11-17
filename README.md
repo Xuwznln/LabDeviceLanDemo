@@ -88,9 +88,7 @@ reinstalls never create duplicates.
 
 Stage two of the smoke drives everything through the management HTTP API, which
 is exactly what a frontend does when creating and running workflows live. Every
-`/api/v1` JSON response is the V1 envelope `{"code": 0, "data": ...}`, and writes carry the
-control token in the `X-UniLab-Token` header (the smoke chooses the token and hands it to the
-runtime it starts):
+`/api/v1` JSON response is the V1 envelope `{"code": 0, "data": ...}`:
 
 - `GET /api/v1/registry/workflow-templates` finds the reported template by display name;
 - `POST /api/v1/workflows/from-template` instantiates it (`{"template_uuid": ..., "bindings": {}}`);

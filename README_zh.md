@@ -71,8 +71,7 @@ host 启动时 AST 扫描发现该模块，按函数相对路径派生稳定 uui
 Workflow Authority——重启/重装不会产生重复工作流。
 
 smoke 的阶段二完全通过管理 HTTP API 驱动，等价于用户在前端实时创建并运行工作流。
-`/api/v1` 的 JSON 响应一律是 V1 信封 `{"code": 0, "data": ...}`，写请求在 `X-UniLab-Token`
-请求头里携带控制面 token（由 smoke 生成并交给它拉起的运行时）：
+`/api/v1` 的 JSON 响应一律是 V1 信封 `{"code": 0, "data": ...}`：
 
 - `GET /api/v1/registry/workflow-templates` 按显示名检索上报的模板；
 - `POST /api/v1/workflows/from-template` 实例化（`{"template_uuid": ..., "bindings": {}}`）；
