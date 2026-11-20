@@ -32,6 +32,16 @@ unilab package install https://github.com/Xuwznln/LabDeviceLanDemo@<commit-sha> 
 python -m pip install "git+https://github.com/Xuwznln/LabDeviceLanDemo@<commit-sha>"
 ```
 
+## 设备
+
+| 注册表 id | 作用 |
+| --- | --- |
+| `hub_node_demo` | 订阅 reporter 的状态并调用远程动作 |
+| `status_reporter_demo` | 发布递增的 counter，实现 `stop_counting` |
+
+两者都声明 `supported_backends=["hostlink", "ros2"]`，只使用共用的 `DeviceNode` 合同，
+没有驱动直接调用 ROS 节点 API。
+
 ## 有限时 smoke
 
 下面的命令会真实启动 host/slave 两个进程，等待 proof JSON，校验 backend 与终态，
@@ -42,7 +52,7 @@ python -m pip install "git+https://github.com/Xuwznln/LabDeviceLanDemo@<commit-s
 python -m lan_demo.smoke --backend hostlink --timeout 30
 
 # 在 ROS 2 Jazzy/Humble 环境中运行
-python -m lan_demo.smoke --backend ros2 --timeout 45
+python -m lan_demo.smoke --backend ros2 --timeout 60
 ```
 
 成功输出示例：
@@ -142,8 +152,22 @@ unilab --backend ros2 --disable_hostlink --skip_env_check --is_slave \
 - 新图契约要求的 UUID、template_name、权威空 Site 快照；
 - `closed_loops` 和 proof JSON 给出的有限时终态。
 
-仅检查注册表（需要仓库支持的 ROS 环境）：
+仅检查注册表（默认 backend 下不需要安装 ROS）：
 
 ```bash
 unilab --check_mode --skip_env_check --devices ./lan_demo --external_devices_only
+```
+
+## 目录
+
+```text
+.
+├── examples/host.json
+├── examples/slave.json
+├── lan_demo/hub_node.py
+├── lan_demo/status_reporter.py
+├── lan_demo/workflows.py
+├── lan_demo/smoke.py
+├── tests/test_hostlink_smoke.py
+└── tests/test_workflow_template_contract.py
 ```
