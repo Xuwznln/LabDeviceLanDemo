@@ -56,7 +56,7 @@ backend name and terminal state, then stops both processes. It never relies on a
 python -m lan_demo.smoke --backend hostlink --timeout 30
 
 # Run inside a ROS 2 Jazzy/Humble environment
-python -m lan_demo.smoke --backend ros2 --timeout 45
+python -m lan_demo.smoke --backend ros2 --timeout 60
 ```
 
 Successful output has this shape:
@@ -168,8 +168,7 @@ unilab --backend ros2 --disable_hostlink --skip_env_check --is_slave \
 
 ## Registry-only check
 
-The registry check imports ROS message definitions, so run it in the repository's supported ROS
-environment:
+With the default backend the registry check needs no ROS installation:
 
 ```bash
 unilab --check_mode --skip_env_check --devices ./lan_demo --external_devices_only
@@ -183,6 +182,8 @@ unilab --check_mode --skip_env_check --devices ./lan_demo --external_devices_onl
 ├── examples/slave.json
 ├── lan_demo/hub_node.py
 ├── lan_demo/status_reporter.py
+├── lan_demo/workflows.py
 ├── lan_demo/smoke.py
-└── tests/test_hostlink_smoke.py
+├── tests/test_hostlink_smoke.py
+└── tests/test_workflow_template_contract.py
 ```
